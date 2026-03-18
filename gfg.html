@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMW Executive Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at top right, #0a0f16, #131c27, #070a0d);
+            color: #ffffff;
+            margin: 0;
+            padding: 40px;
+            min-height: 100vh;
+        }
+
+        .dashboard-container { max-width: 1050px; margin: 0 auto; }
+
+        h1 {
+            text-align: center; font-size: 3em; text-transform: uppercase; letter-spacing: 2px;
+            background: linear-gradient(90deg, #00C9FF 0%, #92FE9D 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 5px;
+        }
+
+        .subtitle { text-align: center; color: #a0aec0; margin-bottom: 30px; font-size: 1.2em; }
+
+        /* Hyperrealistic Glassmorphism Panel */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px; padding: 35px; box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        /* Search Box */
+        .search-container { display: flex; gap: 15px; margin-bottom: 20px; }
+
+        input[type="text"] {
+            flex: 1; padding: 20px 25px; border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.3);
+            color: white; font-size: 18px; font-family: 'Outfit', sans-serif; outline: none; transition: all 0.3s;
+        }
+
+        input[type="text"]:focus { border-color: #00C9FF; box-shadow: 0 0 15px rgba(0, 201, 255, 0.2); }
+
+        button.main-btn {
+            padding: 0 40px; border-radius: 12px; border: none;
+            background: linear-gradient(90deg, #00C9FF 0%, #92FE9D 100%);
+            color: #000; font-weight: 700; font-size: 18px; cursor: pointer; transition: all 0.3s;
+        }
+
+        button.main-btn:hover { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 5px 15px rgba(0,201,255,0.4); }
+
+        /* Suggestions / Chips Area */
+        .suggestions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; justify-content: center; }
+
+        .chip {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #a0aec0; padding: 10px 15px; border-radius: 20px; font-size: 14px;
+            cursor: pointer; transition: all 0.3s; font-family: 'Outfit', sans-serif;
+        }
+
+        .chip:hover { background: rgba(0, 201, 255, 0.1); border-color: #00C9FF; color: #ffffff; transform: translateY(-2px); }
+
+        /* Default Home View */
+        #default-view {
+            text-align: center; padding: 40px; background: rgba(0,0,0,0.2);
+            border-radius: 16px; border: 1px dashed rgba(255,255,255,0.1);
+        }
+        
+        #default-view h2 { color: #92FE9D; margin-top: 0; font-size: 2em; }
+        #default-view p { color: #a0aec0; line-height: 1.6; font-size: 1.1em; }
+
+        /* Results Area */
+        #result-area { display: none; animation: fadeIn 0.6s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .chart-header { text-align: center; color: #00C9FF; margin-bottom: 20px; font-size: 1.8em; }
+        
+        .kpi-card {
+            font-size: 4em; font-weight: 700; color: #92FE9D; text-align: center;
+            text-shadow: 0 0 20px rgba(146, 254, 157, 0.4); margin: 30px 0;
+            background: rgba(0,0,0,0.2); padding: 40px; border-radius: 16px; border: 1px solid rgba(146, 254, 157, 0.2);
+        }
+
+        .canvas-container { max-width: 850px; margin: 0 auto 40px auto; }
+
+        /* Data Table Styling */
+        table {
+            width: 100%; border-collapse: collapse; background: rgba(0,0,0,0.2);
+            border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); margin-top: 20px;
+        }
+
+        th, td { padding: 18px 20px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        th { background-color: rgba(0, 201, 255, 0.1); color: #00C9FF; font-weight: 700; text-transform: uppercase; font-size: 14px; }
+        tr:hover { background-color: rgba(255,255,255,0.03); }
+
+        .highlight-row { background: linear-gradient(90deg, rgba(146, 254, 157, 0.15) 0%, rgba(0,0,0,0) 100%) !important; border-left: 5px solid #92FE9D; }
+        .highlight-row td { color: #92FE9D; font-weight: bold; }
+        
+        .highlight-row-red { background: linear-gradient(90deg, rgba(255, 71, 87, 0.15) 0%, rgba(0,0,0,0) 100%) !important; border-left: 5px solid #FF4757; }
+        .highlight-row-red td { color: #FF4757; font-weight: bold; }
+
+        /* Error Messages */
+        .error-msg {
+            color: #ff4757; text-align: center; font-size: 1.3em; font-weight: 500;
+            padding: 25px; background: rgba(255, 71, 87, 0.1); border-radius: 12px;
+            border: 1px solid rgba(255, 71, 87, 0.3); margin-top: 20px;
+        }
+        .error-msg.graceful { color: #F8C471; background: rgba(248, 196, 113, 0.1); border-color: rgba(248, 196, 113, 0.3); }
+
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <h1>BMW Intelligence</h1>
+        <div class="subtitle">AI-Powered Executive Data Dashboard</div>
+
+        <div class="glass-panel">
+            <div class="search-container">
+                <input type="text" id="queryInput" placeholder="Try 'Show me all Hybrid cars' or 'Details of X5'..." onkeypress="handleEnter(event)">
+                <button class="main-btn" onclick="processQuery()">Generate Insight</button>
+            </div>
+            
+            <div class="suggestions">
+                <button class="chip" onclick="setQuery('What is the average price of all BMW vehicles?')">💰 Avg Price</button>
+                <button class="chip" onclick="setQuery('Show average price by fuel type')">📊 Price by Fuel</button>
+                <button class="chip" onclick="setQuery('What is the average of diesel car')">📈 Diesel Trend</button>
+                <button class="chip" onclick="setQuery('Show me the best selling car')">🏆 Best Selling</button>
+                <button class="chip" onclick="setQuery('Show the lower selling model')">📉 Lowest Selling</button>
+                
+            </div>
+
+            <div id="default-view">
+                <h2>Welcome to the Executive Portal</h2>
+                <p>The system is connected to the live BMW fleet database. You can query pricing, mileage trends, sales data, and fuel type distributions instantly.<br><br></p>
+            </div>
+            
+            <div id="result-area">
+                <h2 id="chart-title" class="chart-header">Result</h2>
+                
+                <div id="kpi-result" class="kpi-card" style="display: none;"></div>
+                
+                <div class="canvas-container" id="chart-container" style="display: none;">
+                    <canvas id="myChart"></canvas>
+                </div>
+                
+                <div id="error-msg" class="error-msg" style="display: none;"></div>
+
+                <table id="data-table" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>Year</th>
+                            <th>Price ($)</th>
+                            <th>Fuel Type</th>
+                            <th>Mileage</th>
+                            <th>Units Sold</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // BMW Dataset
+        const bmwData = [
+            { model: 'Z4', year: 2018, price: 52000, fuelType: 'Petrol', mileage: 35000, sales: 2100 },
+            { model: 'M4', year: 2021, price: 75000, fuelType: 'Petrol', mileage: 15000, sales: 3200 },
+            { model: 'i8', year: 2022, price: 145000, fuelType: 'Hybrid', mileage: 10000, sales: 800 },
+            { model: 'iX', year: 2022, price: 85000, fuelType: 'Electric', mileage: 5000, sales: 600 },
+            { model: 'X3', year: 2018, price: 42000, fuelType: 'Diesel', mileage: 55000, sales: 2800 },
+            { model: 'X1', year: 2019, price: 38000, fuelType: 'Diesel', mileage: 40000, sales: 3100 },
+            { model: 'X5', year: 2020, price: 65000, fuelType: 'Diesel', mileage: 25000, sales: 4500 },
+            { model: 'X7', year: 2021, price: 82000, fuelType: 'Diesel', mileage: 12000, sales: 1200 }
+        ];
+
+        const colors = ['#00C9FF', '#FF0055', '#92FE9D', '#F8C471', '#8B5CF6', '#EAB308', '#EC4899', '#10B981'];
+        let currentChart = null;
+
+        function setQuery(text) {
+            document.getElementById('queryInput').value = text;
+            processQuery();
+        }
+
+        function handleEnter(e) { if (e.key === 'Enter') processQuery(); }
+
+        function resetUI() {
+            document.getElementById('default-view').style.display = 'none';
+            document.getElementById('result-area').style.display = 'block';
+            document.getElementById('kpi-result').style.display = 'none';
+            document.getElementById('chart-container').style.display = 'none';
+            document.getElementById('data-table').style.display = 'none';
+            document.getElementById('error-msg').style.display = 'none';
+            document.getElementById('error-msg').className = 'error-msg'; 
+            if(currentChart) currentChart.destroy();
+        }
+
+        function populateTable(dataArray, highlightModel = null, highlightColor = 'green') {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            
+            dataArray.forEach(car => {
+                let rowClass = '';
+                if (car.model === highlightModel) {
+                    rowClass = highlightColor === 'red' ? 'highlight-row-red' : 'highlight-row';
+                }
+                tbody.innerHTML += `
+                    <tr class="${rowClass}">
+                        <td>${car.model}</td>
+                        <td>${car.year}</td>
+                        <td>$${car.price.toLocaleString()}</td>
+                        <td>${car.fuelType}</td>
+                        <td>${car.mileage.toLocaleString()} mi</td>
+                        <td>${car.sales.toLocaleString()}</td>
+                    </tr>
+                `;
+            });
+            document.getElementById('data-table').style.display = 'table';
+        }
+
+        function processQuery() {
+            const query = document.getElementById('queryInput').value.toLowerCase();
+            if (!query) return;
+
+            resetUI();
+            const ctx = document.getElementById('myChart').getContext('2d');
+            const titleEl = document.getElementById('chart-title');
+
+            // ❌ 1. Bad Input (Testing PDF)
+            if (query.includes('delete') || query.includes('drop') || query.includes('remove')) {
+                titleEl.innerText = "System Alert";
+                let err = document.getElementById('error-msg');
+                err.style.display = 'block';
+                err.classList.add('graceful');
+                err.innerHTML = "⚠️ <strong>Action Rejected:</strong> You do not have the required administrative permissions to modify or delete data.";
+                return;
+            }
+
+            // ❌ 2. Vague Input (Testing PDF)
+            if (query === 'show me something cool' || query === 'hello' || query === 'hi') {
+                titleEl.innerText = "Insight AI";
+                let err = document.getElementById('error-msg');
+                err.style.display = 'block';
+                err.innerHTML = "🤖 <strong>CANNOT_ANSWER:</strong> I'm sorry, I couldn't understand that. Please ask a specific analytical question.";
+                return;
+            }
+
+            // ✅ 3. Average price of all vehicles
+            if (query.includes('average price') && query.includes('all')) {
+                titleEl.innerText = "Average Price of Entire Fleet";
+                let avgPrice = bmwData.reduce((sum, car) => sum + car.price, 0) / bmwData.length;
+                document.getElementById('kpi-result').innerText = "$" + Math.round(avgPrice).toLocaleString();
+                document.getElementById('kpi-result').style.display = "block";
+                populateTable(bmwData);
+                return;
+            }
+            
+            // ✅ 4. Average price by fuel type
+            if (query.includes('average price') && query.includes('fuel')) {
+                titleEl.innerText = "Average Price by Fuel Type";
+                document.getElementById('chart-container').style.display = "block";
+                
+                const fuels = ['Petrol', 'Diesel', 'Hybrid', 'Electric'];
+                const avgs = fuels.map(f => {
+                    let filtered = bmwData.filter(c => c.fuelType === f);
+                    return filtered.length ? Math.round(filtered.reduce((sum, c) => sum + c.price, 0) / filtered.length) : 0;
+                });
+
+                currentChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: fuels, datasets: [{ label: 'Average Price ($)', data: avgs, backgroundColor: colors, borderRadius: 8 }] },
+                    options: { responsive: true, plugins: { legend: { display: false } } }
+                });
+                populateTable(bmwData);
+                return;
+            }
+
+            // ✅ 5. Trend of diesel mileage
+            if (query.includes('trend') && query.includes('mileage') && query.includes('diesel')) {
+                titleEl.innerText = "Mileage Trend Over Years (Diesel Models)";
+                document.getElementById('chart-container').style.display = "block";
+                
+                let dieselCars = bmwData.filter(c => c.fuelType === 'Diesel').sort((a,b) => a.year - b.year);
+                
+                currentChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dieselCars.map(c => c.year),
+                        datasets: [{ label: 'Average Mileage', data: dieselCars.map(c => c.mileage), borderColor: '#00C9FF', backgroundColor: 'rgba(0, 201, 255, 0.2)', fill: true, tension: 0.4, borderWidth: 3 }]
+                    },
+                    options: { responsive: true, plugins: { legend: { display: false } } }
+                });
+                populateTable(dieselCars);
+                return;
+            }
+
+            // ✅ 6. BEST SELLING
+            if (query.includes('best selling') || query.includes('highest sales')) {
+                titleEl.innerText = "🏆 Top Selling BMW Models";
+                document.getElementById('chart-container').style.display = "block";
+                
+                let sortedData = [...bmwData].sort((a, b) => b.sales - a.sales);
+                let topCar = sortedData[0];
+                
+                currentChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: sortedData.map(d => d.model), datasets: [{ label: 'Units Sold', data: sortedData.map(d => d.sales), backgroundColor: colors, borderRadius: 6 }] },
+                    options: { responsive: true, plugins: { legend: { display: false } } }
+                });
+                populateTable(sortedData, topCar.model, 'green');
+                return;
+            }
+
+            // ✅ 7. LOWER SELLING
+            if (query.includes('lower selling') || query.includes('lowest')) {
+                titleEl.innerText = "📉 Lowest Selling BMW Models";
+                document.getElementById('chart-container').style.display = "block";
+                
+                let sortedData = [...bmwData].sort((a, b) => a.sales - b.sales);
+                let lowestCar = sortedData[0];
+                
+                currentChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: sortedData.map(d => d.model), datasets: [{ label: 'Units Sold', data: sortedData.map(d => d.sales), backgroundColor: colors, borderRadius: 6 }] },
+                    options: { responsive: true, plugins: { legend: { display: false } } }
+                });
+                populateTable(sortedData, lowestCar.model, 'red');
+                return;
+            }
+
+            // 🚀 NEW: CUSTOM DYNAMIC QUERY HANDLER
+            // If the user types a random car name or fuel type, the system will try to find it dynamically!
+            let customFilteredData = bmwData.filter(car => {
+                let matchFound = false;
+                // Match fuel type
+                if (query.includes(car.fuelType.toLowerCase())) matchFound = true;
+                // Match model name
+                if (query.includes(car.model.toLowerCase())) matchFound = true;
+                return matchFound;
+            });
+
+            if (customFilteredData.length > 0) {
+                titleEl.innerText = "🔍 Custom Search Insights";
+                document.getElementById('chart-container').style.display = "block";
+                
+                // Decide what to chart based on keyword (default to Sales)
+                let metric = query.includes('price') ? 'price' : 'sales';
+                let metricLabel = metric === 'price' ? 'Price ($)' : 'Units Sold';
+                
+                // Sort data for better chart look
+                customFilteredData.sort((a, b) => b[metric] - a[metric]);
+
+                currentChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: customFilteredData.map(d => d.model),
+                        datasets: [{
+                            label: metricLabel,
+                            data: customFilteredData.map(d => d[metric]),
+                            backgroundColor: colors,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: { responsive: true, plugins: { legend: { display: false } } }
+                });
+                populateTable(customFilteredData);
+            } 
+            // ❌ 8. Default Error (If nothing matches at all)
+            else {
+                titleEl.innerText = "Insight AI";
+                let err = document.getElementById('error-msg');
+                err.style.display = 'block';
+                err.innerHTML = "🤖 <strong>CANNOT_ANSWER:</strong> The requested insight cannot be extracted from the current BMW dataset. Try searching for specific models (like 'X5') or fuel types (like 'Diesel').";
+            }
+        }
+    </script>
+</body>
+</html>
